@@ -1,12 +1,14 @@
 '''
 Programmers: Rocio Salguero
-             Andy Nygen
+             Andy Nguyen
              Annie Chen
 
 References:
     https://www.kaggle.com/startupsci/titanic-data-science-solutions
     https://www.kaggle.com/minsukheo/titanic-solution-with-sklearn-classifiers
     https://blog.sicara.com/naive-bayes-classifier-sklearn-python-example-tips-42d100429e44
+    http://dataaspirant.com/2017/02/01/decision-tree-algorithm-python-with-scikit-learn/
+    http://benalexkeen.com/decision-tree-classifier-in-python-using-scikit-learn/
 
 '''
 import numpy as np
@@ -14,16 +16,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
-from sklearn.model_selection import cross_val_score, cross_val_predict
+from sklearn.model_selection import cross_val_score, cross_val_predict, train_test_split
+from sklearn.metrics import accuracy_score
+from subprocess import check_call
+
 
 
 def bar_chart(feature):
-    survived = original[original['Income']==1][feature].value_counts()
-    dead = original[original['Income']==0][feature].value_counts()
-    df = pd.DataFrame([survived,dead])
-    df.index = ['>50','<=50']
-    df.plot(kind='bar',stacked=True, figsize=(10,5))
+    survived = original[original['Income'] == 1][feature].value_counts()
+    dead = original[original['Income'] == 0][feature].value_counts()
+    df = pd.DataFrame([survived, dead])
+    df.index = ['>50', '<=50']
+    df.plot(kind='bar', stacked=True, figsize=(10, 5))
     plt.title(feature)
     plt.show()
 
@@ -48,7 +54,6 @@ original.replace(" >50K", 1, inplace=True)
 # original["Income_cleaned"]=original["Income_cleaned"].cat.codes
 
 # # Drop null values
-# original.dropna()
 original = original[pd.notnull(original['Work'])]
 original = original[pd.notnull(original['Occupation'])]
 
@@ -123,27 +128,28 @@ print(original.head(20))
 # print(original.Work.unique(), '\n', original['Edu-Lvl'].unique(), '\n', original['Marriage-Status'].unique())
 # print(original.Occupation.unique(), '\n', original.Relationship.unique(), '\n', original.Gender.unique())
 
-original["Work"]=original["Work"].astype('category')
-original["Work"]=original["Work"].cat.codes
+original["Work"] = original["Work"].astype('category')
+original["Work"] = original["Work"].cat.codes
 
-original["Edu-Lvl"]=original["Edu-Lvl"].astype('category')
-original["Edu-Lvl"]=original["Edu-Lvl"].cat.codes
+original["Edu-Lvl"] = original["Edu-Lvl"].astype('category')
+original["Edu-Lvl"] = original["Edu-Lvl"].cat.codes
 
-original["Marriage-Status"]=original["Marriage-Status"].astype('category')
-original["Marriage-Status"]=original["Marriage-Status"].cat.codes
+original["Marriage-Status"] = original["Marriage-Status"].astype('category')
+original["Marriage-Status"] = original["Marriage-Status"].cat.codes
 
-original["Occupation"]=original["Occupation"].astype('category')
-original["Occupation"]=original["Occupation"].cat.codes
+original["Occupation"] = original["Occupation"].astype('category')
+original["Occupation"] = original["Occupation"].cat.codes
 
-original["Relationship"]=original["Relationship"].astype('category')
-original["Relationship"]=original["Relationship"].cat.codes
+original["Relationship"] = original["Relationship"].astype('category')
+original["Relationship"] = original["Relationship"].cat.codes
 
-original["Gender"]=original["Gender"].astype('category')
-original["Gender"]=original["Gender"].cat.codes
+original["Gender"] = original["Gender"].astype('category')
+original["Gender"] = original["Gender"].cat.codes
 # See the numerical categorical values
 # print(original.Work.unique(), '\n', original['Edu-Lvl'].unique(), '\n', original['Marriage-Status'].unique())
 # print(original.Occupation.unique(), '\n', original.Relationship.unique(), '\n', original.Gender.unique())
 # print(original.head(10))
+
 
 
 ''' Naive Bayes '''
@@ -151,4 +157,15 @@ nbModel = GaussianNB()
 nbModel.fit(original[X_columns], original['Income'])
 score = cross_val_score(nbModel, original[X_columns], original['Income'], cv=10)
 print(score)
-print(round(np.mean(score)*100, 2) )
+print(round(np.mean(score)*100, 2))
+
+
+''' Decision Tree '''
+X_train, X_test, y_train, y_test = train_test_split(original[X_columns], original[Y_columns], test_size=0.3, random_state=1)
+dtModel = tree.DecisionTreeClassifier(criterion="entropy", random_state=100, max_depth=10, min_samples_leaf=10)
+dtModel.fit(X_train, y_train)
+y_predict = dtModel.predict(X_test)
+accuracy = accuracy_score(y_test, y_predict)
+print(round(accuracy*100, 2))
+tree.export_graphviz(dtModel, out_file='tree.dot', feature_names=X_columns)
+# check_call(['dot', '-Tpng', 'tree.dot', '-o', 'tree.png'])
