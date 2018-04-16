@@ -16,9 +16,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
+from sklearn import tree
+from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import cross_val_score, cross_val_predict, train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from subprocess import check_call
 
@@ -33,6 +37,11 @@ def bar_chart(feature):
     plt.title(feature)
     plt.show()
 
+def findBestParams(grid, model):
+    gridSearch = GridSearchCV(model, cv=10, param_grid=grid)
+    gridSearch.fit(X, y)
+    print("Best Parameters: ", gridSearch.best_params_)
+    print("Best Score: ", round(gridSearch.best_score_))
 
 '''  Retrieve and Fix data  '''
 original = pd.read_csv('Dataset.csv', header=None, index_col=None)
@@ -150,22 +159,43 @@ original["Gender"] = original["Gender"].cat.codes
 # print(original.Occupation.unique(), '\n', original.Relationship.unique(), '\n', original.Gender.unique())
 # print(original.head(10))
 
-
+X = original[X_columns]
+y = original['Income']
 
 ''' Naive Bayes '''
 nbModel = GaussianNB()
-nbModel.fit(original[X_columns], original['Income'])
-score = cross_val_score(nbModel, original[X_columns], original['Income'], cv=10)
+nbModel.fit(X, y)
+score = cross_val_score(nbModel, X, y, cv=10)
 print(score)
-print(round(np.mean(score)*100, 2))
+print(round(np.mean(score) * 100, 2))
 
 
 ''' Decision Tree '''
-X_train, X_test, y_train, y_test = train_test_split(original[X_columns], original[Y_columns], test_size=0.3, random_state=1)
 dtModel = tree.DecisionTreeClassifier(criterion="entropy", random_state=100, max_depth=10, min_samples_leaf=10)
-dtModel.fit(X_train, y_train)
-y_predict = dtModel.predict(X_test)
-accuracy = accuracy_score(y_test, y_predict)
-print(round(accuracy*100, 2))
+dtModel.fit(X, y)
+accuracy = cross_val_score(dtModel, X, y, cv=10)
+print(round(np.mean(accuracy) * 100, 2))
 tree.export_graphviz(dtModel, out_file='tree.dot', feature_names=X_columns, class_names=['<=50K', '>50K'])
 # check_call(['dot', '-Tpng', 'tree.dot', '-o', 'tree.png'])
+
+''' Multilayer perceptron '''
+
+# findBestParams(MLPClassifier(), grid)
+# scaler = StandardScaler()
+# scaler.fit(X)
+# grid = {'hidden_layer_sizes': [70],
+#         'alpha': [0.0025],
+#         'max_iter': [200]}
+#
+# gridSearch = GridSearchCV(MLPClassifier(), cv=10, param_grid=grid)
+# gridSearch.fit(X, y)
+# print("Best Parameters: ", gridSearch.best_params_)
+# print("Best Score: ", round(gridSearch.best_score_))
+
+scaler = StandardScaler()
+scaler.fit(X)
+X = scaler.transform(X)
+mlpModel = MLPClassifier(hidden_layer_sizes=50, alpha=0.005)
+mlpModel.fit(X, y)
+mlpAccuracy = cross_val_score(mlpModel, X, y, cv=10)
+print("MLP Score: ", round(np.mean(mlpAccuracy) * 100, 2))
