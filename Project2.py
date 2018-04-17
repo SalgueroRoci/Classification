@@ -15,20 +15,22 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import math
-import itertools
 
-from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
+from sklearn import tree
+from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import cross_val_score, cross_val_predict, train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
 from subprocess import check_call
 
 
-
 def bar_chart(feature):
-    survived = original[original['Income'] == 1][feature].value_counts()
-    dead = original[original['Income'] == 0][feature].value_counts()
+    survived = data[data['Income'] == 1][feature].value_counts()
+    dead = data[data['Income'] == 0][feature].value_counts()
     df = pd.DataFrame([survived, dead])
     df.index = ['>50', '<=50']
     df.plot(kind='bar', stacked=True, figsize=(10, 5))
@@ -36,81 +38,87 @@ def bar_chart(feature):
     plt.show()
 
 
+def findBestMLPParams(grid, X, y):
+    # Warning, very slow. Uses an exhausive search
+    gridSearch = GridSearchCV(estimator=MLPClassifier(), cv=10, param_grid=grid, n_jobs=4)
+    gridSearch.fit(X, y)
+    print("Best Parameters: ", gridSearch.best_params_)
+    print("Best Score: ", gridSearch.best_score_)
+
+
 '''  Retrieve and Fix data  '''
-original = pd.read_csv('Dataset.csv', header=None, index_col=None)
-original.columns = ['Age', 'Work', 'Edu-Lvl', 'Edu-Years', 'Marriage-Status', 'Occupation', 'Relationship', 'Gender',
-                    'Cap-Gain', 'Cap-Loss', 'Hours', 'Income']
+data = pd.read_csv('Dataset.csv', header=None, index_col=None)
+data.columns = ['Age', 'Work', 'Edu-Lvl', 'Edu-Years', 'Marriage-Status', 'Occupation', 'Relationship', 'Gender',
+                'Cap-Gain', 'Cap-Loss', 'Hours', 'Income']
 X_columns = ['Age', 'Work', 'Edu-Lvl', 'Edu-Years', 'Marriage-Status', 'Occupation', 'Relationship', 'Gender',
-                    'Cap-Gain', 'Cap-Loss', 'Hours']
+             'Cap-Gain', 'Cap-Loss', 'Hours']
 Y_columns = ['Income']
 
 # Number of empty values
-# print(original.isnull().sum())
-# print(original.describe(include="all"))
+# print(data.isnull().sum())
+# print(data.describe(include="all"))
 
-original.replace(["?", "? ", " ?", " ? "], np.nan, inplace=True)
-original.replace(" <=50K", 0, inplace=True)
-original.replace(" >50K", 1, inplace=True)
+data.replace(["?", "? ", " ?", " ? "], np.nan, inplace=True)
+data.replace(" <=50K", 0, inplace=True)
+data.replace(" >50K", 1, inplace=True)
 # creating new column instead of replace
-# original["Income_cleaned"]=original["Income"].astype('category')
-# original["Income_cleaned"]=original["Income_cleaned"].cat.codes
+# data["Income_cleaned"]=data["Income"].astype('category')
+# data["Income_cleaned"]=data["Income_cleaned"].cat.codes
 
 # # Drop null values
-original = original[pd.notnull(original['Work'])]
-original = original[pd.notnull(original['Occupation'])]
-
+data = data[pd.notnull(data['Work'])]
+data = data[pd.notnull(data['Occupation'])]
 
 ''' Certain Columns can be grouped into ranges for easier analysis 
     Grouping: Age, Edu-Years, Cap-Gain, Cap-Loss, Hours '''
 # Combine Age, Cap-Gain, Cap-Loss, Hours
-original.loc[original.Age <= 21, 'Age'] = 0
-original.loc[(original.Age > 21) & (original.Age <= 30), 'Age'] = 1
-original.loc[(original.Age > 30) & (original.Age <= 50), 'Age'] = 2
-original.loc[(original.Age > 50) & (original.Age <= 70), 'Age'] = 3
-original.loc[original.Age > 70, 'Age'] = 4
+data.loc[data.Age <= 21, 'Age'] = 0
+data.loc[(data.Age > 21) & (data.Age <= 30), 'Age'] = 1
+data.loc[(data.Age > 30) & (data.Age <= 50), 'Age'] = 2
+data.loc[(data.Age > 50) & (data.Age <= 70), 'Age'] = 3
+data.loc[data.Age > 70, 'Age'] = 4
 
-original.loc[original['Cap-Gain'] <= 2000, 'Cap-Gain'] = 0
-original.loc[(original['Cap-Gain'] > 2000) & (original['Cap-Gain'] <= 4000), 'Cap-Gain'] = 1
-original.loc[(original['Cap-Gain'] > 4000) & (original['Cap-Gain'] <= 6000), 'Cap-Gain'] = 2
-original.loc[(original['Cap-Gain'] > 6000) & (original['Cap-Gain'] <= 10000), 'Cap-Gain'] = 3
-original.loc[original['Cap-Gain'] > 10000, 'Cap-Gain'] = 4
+data.loc[data['Cap-Gain'] <= 2000, 'Cap-Gain'] = 0
+data.loc[(data['Cap-Gain'] > 2000) & (data['Cap-Gain'] <= 4000), 'Cap-Gain'] = 1
+data.loc[(data['Cap-Gain'] > 4000) & (data['Cap-Gain'] <= 6000), 'Cap-Gain'] = 2
+data.loc[(data['Cap-Gain'] > 6000) & (data['Cap-Gain'] <= 10000), 'Cap-Gain'] = 3
+data.loc[data['Cap-Gain'] > 10000, 'Cap-Gain'] = 4
 
-original.loc[original['Cap-Loss'] <= 1300, 'Cap-Loss'] = 0
-original.loc[(original['Cap-Loss'] > 1300) & (original['Cap-Loss'] <= 1600), 'Cap-Loss'] = 1
-original.loc[(original['Cap-Loss'] > 1600) & (original['Cap-Loss'] <= 1900), 'Cap-Loss'] = 2
-original.loc[(original['Cap-Loss'] > 1900) & (original['Cap-Loss'] <= 2200), 'Cap-Loss'] = 3
-original.loc[original['Cap-Loss'] > 2200, 'Cap-Loss'] = 4
+data.loc[data['Cap-Loss'] <= 1300, 'Cap-Loss'] = 0
+data.loc[(data['Cap-Loss'] > 1300) & (data['Cap-Loss'] <= 1600), 'Cap-Loss'] = 1
+data.loc[(data['Cap-Loss'] > 1600) & (data['Cap-Loss'] <= 1900), 'Cap-Loss'] = 2
+data.loc[(data['Cap-Loss'] > 1900) & (data['Cap-Loss'] <= 2200), 'Cap-Loss'] = 3
+data.loc[data['Cap-Loss'] > 2200, 'Cap-Loss'] = 4
 
-original.loc[original.Hours <= 20, 'Hours'] = 0
-original.loc[(original.Hours > 20) & (original.Hours <= 40), 'Hours'] = 1
-original.loc[(original.Hours > 40) & (original.Hours <= 60), 'Hours'] = 2
-original.loc[(original.Hours > 60) & (original.Hours <= 80), 'Hours'] = 3
-original.loc[original.Hours > 80, 'Hours'] = 4
-
+data.loc[data.Hours <= 20, 'Hours'] = 0
+data.loc[(data.Hours > 20) & (data.Hours <= 40), 'Hours'] = 1
+data.loc[(data.Hours > 40) & (data.Hours <= 60), 'Hours'] = 2
+data.loc[(data.Hours > 60) & (data.Hours <= 80), 'Hours'] = 3
+data.loc[data.Hours > 80, 'Hours'] = 4
 
 ''' Analyze Data '''
-print(original.head(10))
-# print(original.columns.values)
-# print("Data shape", original.shape)
+print(data.head(10))
+# print(data.columns.values)
+# print("Data shape", data.shape)
 
 # #Info on numerical and categorical values
-# print(original.info())
-# print(original.describe(include=['O']))
-# print(original.describe())
+# print(data.info())
+# print(data.describe(include=['O']))
+# print(data.describe())
 
 ''' Look at percentage fo each category where Income >50K'''
-# print(original[['Work', 'Income']].groupby(['Work'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Edu-Lvl', 'Income']].groupby(['Edu-Lvl'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Marriage-Status', 'Income']].groupby(['Marriage-Status'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Occupation', 'Income']].groupby(['Occupation'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Relationship', 'Income']].groupby(['Relationship'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Gender', 'Income']].groupby(['Gender'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Work', 'Income']].groupby(['Work'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Edu-Lvl', 'Income']].groupby(['Edu-Lvl'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Marriage-Status', 'Income']].groupby(['Marriage-Status'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Occupation', 'Income']].groupby(['Occupation'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Relationship', 'Income']].groupby(['Relationship'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Gender', 'Income']].groupby(['Gender'], as_index=False).mean().sort_values(by='Income', ascending=False) )
 
-# print(original[['Age', 'Income']].groupby(['Age'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Edu-Years', 'Income']].groupby(['Edu-Years'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Cap-Gain', 'Income']].groupby(['Cap-Gain'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Cap-Loss', 'Income']].groupby(['Cap-Loss'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(original[['Hours', 'Income']].groupby(['Hours'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Age', 'Income']].groupby(['Age'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Edu-Years', 'Income']].groupby(['Edu-Years'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Cap-Gain', 'Income']].groupby(['Cap-Gain'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Cap-Loss', 'Income']].groupby(['Cap-Loss'], as_index=False).mean().sort_values(by='Income', ascending=False) )
+# print(data[['Hours', 'Income']].groupby(['Hours'], as_index=False).mean().sort_values(by='Income', ascending=False) )
 
 # Bar chart distributions
 # bar_chart('Work')
@@ -127,66 +135,83 @@ print(original.head(10))
 
 ''' Convert Category Columns to numerical '''
 # See the categorical unique values
-# print(original.Work.unique(), '\n', original['Edu-Lvl'].unique(), '\n', original['Marriage-Status'].unique())
-# print(original.Occupation.unique(), '\n', original.Relationship.unique(), '\n', original.Gender.unique())
+# print(data.Work.unique(), '\n', data['Edu-Lvl'].unique(), '\n', data['Marriage-Status'].unique())
+# print(data.Occupation.unique(), '\n', data.Relationship.unique(), '\n', data.Gender.unique())
 
-original["Work"] = original["Work"].astype('category')
-original["Work"] = original["Work"].cat.codes
+data["Work"] = data["Work"].astype('category')
+data["Work"] = data["Work"].cat.codes
 
-original["Edu-Lvl"] = original["Edu-Lvl"].astype('category')
-original["Edu-Lvl"] = original["Edu-Lvl"].cat.codes
+data["Edu-Lvl"] = data["Edu-Lvl"].astype('category')
+data["Edu-Lvl"] = data["Edu-Lvl"].cat.codes
 
-original["Marriage-Status"] = original["Marriage-Status"].astype('category')
-original["Marriage-Status"] = original["Marriage-Status"].cat.codes
+data["Marriage-Status"] = data["Marriage-Status"].astype('category')
+data["Marriage-Status"] = data["Marriage-Status"].cat.codes
 
-original["Occupation"] = original["Occupation"].astype('category')
-original["Occupation"] = original["Occupation"].cat.codes
+data["Occupation"] = data["Occupation"].astype('category')
+data["Occupation"] = data["Occupation"].cat.codes
 
-original["Relationship"] = original["Relationship"].astype('category')
-original["Relationship"] = original["Relationship"].cat.codes
+data["Relationship"] = data["Relationship"].astype('category')
+data["Relationship"] = data["Relationship"].cat.codes
 
-original["Gender"] = original["Gender"].astype('category')
-original["Gender"] = original["Gender"].cat.codes
+data["Gender"] = data["Gender"].astype('category')
+data["Gender"] = data["Gender"].cat.codes
+
+
 # See the numerical categorical values
-# print(original.Work.unique(), '\n', original['Edu-Lvl'].unique(), '\n', original['Marriage-Status'].unique())
-# print(original.Occupation.unique(), '\n', original.Relationship.unique(), '\n', original.Gender.unique())
-print(original.head(10))
+# print(data.Work.unique(), '\n', data['Edu-Lvl'].unique(), '\n', data['Marriage-Status'].unique())
+# print(data.Occupation.unique(), '\n', data.Relationship.unique(), '\n', data.Gender.unique())
+# print(data.head(10))
+
+def main():
+    X = data[X_columns]
+    y = data['Income']
+
+    ''' Naive Bayes '''
+    nbModel = GaussianNB()
+    nbModel.fit(X, y)
+    score = cross_val_score(nbModel, X, y, cv=10)
+    print(score)
+    print("GaussianNB Score:", round(np.mean(score) * 100, 2))
+    y_pred = nbModel.predict(X)
+    print("Number of mislabeled points out of a total {} points : {}, performance {:05.2f}%"
+        .format(
+        data.shape[0],
+        (y != y_pred).sum(),
+        100 * (1 - (y != y_pred).sum() / data.shape[0])
+    ))
+    print("Model prior(Prior probabilities of the classes): ", nbModel.class_prior_, "\nModel class:", nbModel.classes_)
+    print("Model mean:\n", nbModel.theta_, "\nModel sigma/variance: \n", nbModel.sigma_, "\n")
+
+    # Figure out profiles/test the model
+    for col in X_columns:
+        nbModel.fit(data[col].values.reshape(-1, 1), data.Income)
+        value = sorted(data[col].unique(), key=int)
+        # print (sorted(value, key=int) )
+        print("\n", col, ": ")
+        for val in value:
+            print(val, ":", nbModel.predict_proba(val), "class", nbModel.predict(val))
 
 
 
-''' Naive Bayes '''
-nbModel = GaussianNB()
-nbModel.fit(original[X_columns], original['Income'])
-score = cross_val_score(nbModel, original[X_columns], original['Income'], cv=10)
-print(score)
-print("GaussianNB Score:", round(np.mean(score)*100, 2))
-print("Model prior(Prior probabilities of the classes): " , nbModel.class_prior_, "\nModel class:", nbModel.classes_)
-print("Model mean:\n", nbModel.theta_, "\nModel sigma/variance: \n", nbModel.sigma_, "\n")
+    ''' Decision Tree '''
+    dtModel = tree.DecisionTreeClassifier(criterion="entropy", random_state=100, max_depth=10, min_samples_leaf=10)
+    dtModel.fit(X, y)
+    accuracy = cross_val_score(dtModel, X, y, cv=10)
+    print("\nDecision Tree Score:", round(np.mean(accuracy) * 100, 2))
+    tree.export_graphviz(dtModel, out_file='tree.dot', feature_names=X_columns)
+    # check_call(['dot', '-Tpng', 'tree.dot', '-o', 'tree.png'])
 
-# Testing one sample
-# x =  np.array([2, 6, 9, 13, 2, 3, 0, 0, 0, 0, 0])
-# y2 = nbModel.predict_proba(x.reshape(1, -1))
-# y = nbModel.predict(x.reshape(1, -1))
-# print(x, " gets the class of:", y, "using model:", y2)
-
-# Figuire out profiles/test the model
-for col in X_columns:
-    nbModel.fit(original[col].values.reshape(-1,1), original.Income)
-    value = sorted( original[col].unique(), key=int)
-    # print (sorted(value, key=int) )
-    print(col, ": ")
-    for val in value:
-        print(val, ":", nbModel.predict_proba(val), "class", nbModel.predict(val))
+    ''' Multilayer perceptron '''
+    scaler = StandardScaler()
+    scaler.fit(X)
+    X_scaler = scaler.transform(X)
+    # grid = {'hidden_layer_sizes': [125, 150], 'alpha': [0.01, 0.005], 'max_iter': [470, 480]}
+    # findBestMLPParams(grid, X_scaler, y)
+    mlpModel = MLPClassifier(hidden_layer_sizes=150, alpha=0.01, max_iter=475)
+    mlpModel.fit(X_scaler, y)
+    mlpAccuracy = cross_val_score(mlpModel, X_scaler, y, cv=10)
+    print("\nMLP Score:", round(np.mean(mlpAccuracy) * 100, 2))
 
 
-
-
-''' Decision Tree '''
-X_train, X_test, y_train, y_test = train_test_split(original[X_columns], original[Y_columns], test_size=0.3, random_state=1)
-dtModel = tree.DecisionTreeClassifier(criterion="entropy", random_state=100, max_depth=10, min_samples_leaf=10)
-dtModel.fit(X_train, y_train)
-y_predict = dtModel.predict(X_test)
-accuracy = accuracy_score(y_test, y_predict)
-print("\nDecision Tree score:", round(accuracy*100, 2))
-tree.export_graphviz(dtModel, out_file='tree.dot', feature_names=X_columns)
-# check_call(['dot', '-Tpng', 'tree.dot', '-o', 'tree.png'])
+if __name__ == '__main__':
+    main()
