@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import math
+import itertools
 
 from sklearn import tree
 from sklearn.naive_bayes import GaussianNB
@@ -87,7 +89,7 @@ original.loc[original.Hours > 80, 'Hours'] = 4
 
 
 ''' Analyze Data '''
-print(original.head(20))
+print(original.head(10))
 # print(original.columns.values)
 # print("Data shape", original.shape)
 
@@ -148,7 +150,7 @@ original["Gender"] = original["Gender"].cat.codes
 # See the numerical categorical values
 # print(original.Work.unique(), '\n', original['Edu-Lvl'].unique(), '\n', original['Marriage-Status'].unique())
 # print(original.Occupation.unique(), '\n', original.Relationship.unique(), '\n', original.Gender.unique())
-# print(original.head(10))
+print(original.head(10))
 
 
 
@@ -157,7 +159,26 @@ nbModel = GaussianNB()
 nbModel.fit(original[X_columns], original['Income'])
 score = cross_val_score(nbModel, original[X_columns], original['Income'], cv=10)
 print(score)
-print(round(np.mean(score)*100, 2))
+print("GaussianNB Score:", round(np.mean(score)*100, 2))
+print("Model prior(Prior probabilities of the classes): " , nbModel.class_prior_, "\nModel class:", nbModel.classes_)
+print("Model mean:\n", nbModel.theta_, "\nModel sigma/variance: \n", nbModel.sigma_, "\n")
+
+# Testing one sample
+# x =  np.array([2, 6, 9, 13, 2, 3, 0, 0, 0, 0, 0])
+# y2 = nbModel.predict_proba(x.reshape(1, -1))
+# y = nbModel.predict(x.reshape(1, -1))
+# print(x, " gets the class of:", y, "using model:", y2)
+
+# Figuire out profiles/test the model
+for col in X_columns:
+    nbModel.fit(original[col].values.reshape(-1,1), original.Income)
+    value = sorted( original[col].unique(), key=int)
+    # print (sorted(value, key=int) )
+    print(col, ": ")
+    for val in value:
+        print(val, ":", nbModel.predict_proba(val), "class", nbModel.predict(val))
+
+
 
 
 ''' Decision Tree '''
@@ -166,6 +187,6 @@ dtModel = tree.DecisionTreeClassifier(criterion="entropy", random_state=100, max
 dtModel.fit(X_train, y_train)
 y_predict = dtModel.predict(X_test)
 accuracy = accuracy_score(y_test, y_predict)
-print(round(accuracy*100, 2))
+print("\nDecision Tree score:", round(accuracy*100, 2))
 tree.export_graphviz(dtModel, out_file='tree.dot', feature_names=X_columns)
 # check_call(['dot', '-Tpng', 'tree.dot', '-o', 'tree.png'])
