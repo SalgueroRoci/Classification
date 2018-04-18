@@ -180,7 +180,7 @@ def main():
         100 * (1 - (y != y_pred).sum() / data.shape[0])
     ))
     print("Model prior(Prior probabilities of the classes): ", nbModel.class_prior_, "\nModel class:", nbModel.classes_)
-    print("Model mean:\n", nbModel.theta_, "\nModel sigma/variance: \n", nbModel.sigma_, "\n")
+    print("Model mean:\n", nbModel.theta_, "\nModel SD: \n", nbModel.sigma_, "\n")
 
     # Figure out profiles/test the model
     for col in X_columns:
