@@ -139,21 +139,17 @@ print(data.head(10))
 # print(data.Occupation.unique(), '\n', data.Relationship.unique(), '\n', data.Gender.unique())
 
 data["Work"] = data["Work"].astype('category')
-data["Work"] = data["Work"].cat.codes
-
 data["Edu-Lvl"] = data["Edu-Lvl"].astype('category')
-data["Edu-Lvl"] = data["Edu-Lvl"].cat.codes
-
 data["Marriage-Status"] = data["Marriage-Status"].astype('category')
-data["Marriage-Status"] = data["Marriage-Status"].cat.codes
-
 data["Occupation"] = data["Occupation"].astype('category')
-data["Occupation"] = data["Occupation"].cat.codes
-
 data["Relationship"] = data["Relationship"].astype('category')
-data["Relationship"] = data["Relationship"].cat.codes
-
 data["Gender"] = data["Gender"].astype('category')
+
+data["Work"] = data["Work"].cat.codes
+data["Edu-Lvl"] = data["Edu-Lvl"].cat.codes
+data["Marriage-Status"] = data["Marriage-Status"].cat.codes
+data["Occupation"] = data["Occupation"].cat.codes
+data["Relationship"] = data["Relationship"].cat.codes
 data["Gender"] = data["Gender"].cat.codes
 
 
@@ -191,8 +187,6 @@ def main():
         for val in value:
             print(val, ":", nbModel.predict_proba(val), "class", nbModel.predict(val))
 
-
-
     ''' Decision Tree '''
     dtModel = tree.DecisionTreeClassifier(criterion="entropy", random_state=100, max_depth=10, min_samples_leaf=10)
     dtModel.fit(X, y)
@@ -210,7 +204,10 @@ def main():
     mlpModel = MLPClassifier(hidden_layer_sizes=150, alpha=0.01, max_iter=475)
     mlpModel.fit(X_scaler, y)
     mlpAccuracy = cross_val_score(mlpModel, X_scaler, y, cv=10)
-    print("\nMLP Score:", round(np.mean(mlpAccuracy) * 100, 2))
+    y_predict = cross_val_predict(mlpModel, X_scaler, y, cv=10)
+    print("\nMLP Cross-Validation Score:", round(np.mean(mlpAccuracy) * 100, 2))
+    print("Accuracy (True Y vs Predicted Y:)", round(accuracy_score(y, y_predict) * 100, 2))
+    print("Classification Report (True Y vs Predicted Y):\n", classification_report(y, y_predict))
 
 
 if __name__ == '__main__':
