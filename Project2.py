@@ -2,36 +2,33 @@
 Programmers: Rocio Salguero
              Andy Nguyen
              Annie Chen
-
 References:
     https://www.kaggle.com/startupsci/titanic-data-science-solutions
     https://www.kaggle.com/minsukheo/titanic-solution-with-sklearn-classifiers
     https://blog.sicara.com/naive-bayes-classifier-sklearn-python-example-tips-42d100429e44
     http://dataaspirant.com/2017/02/01/decision-tree-algorithm-python-with-scikit-learn/
     http://benalexkeen.com/decision-tree-classifier-in-python-using-scikit-learn/
-
+    https://www.kaggle.com/sebask/mlpclassifier-for-titanic-data/code
 '''
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+from pylab import savefig
 from sklearn.naive_bayes import GaussianNB
 from sklearn import tree
 from sklearn.neural_network import MLPClassifier
-from sklearn.model_selection import cross_val_score, cross_val_predict, train_test_split
+from sklearn.model_selection import cross_val_score, cross_val_predict
 from sklearn.preprocessing import StandardScaler
-from sklearn.pipeline import make_pipeline
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import classification_report
-from subprocess import check_call
 
 
 def bar_chart(feature):
-    survived = data[data['Income'] == 1][feature].value_counts()
-    dead = data[data['Income'] == 0][feature].value_counts()
-    df = pd.DataFrame([survived, dead])
+    OverFifty = data[data['Income'] == 1][feature].value_counts()
+    LessThanFifty = data[data['Income'] == 0][feature].value_counts()
+    df = pd.DataFrame([OverFifty, LessThanFifty])
     df.index = ['>50', '<=50']
     df.plot(kind='bar', stacked=True, figsize=(10, 5))
     plt.title(feature)
@@ -46,6 +43,19 @@ def findBestMLPParams(grid, X, y):
     print("Best Score: ", gridSearch.best_score_)
 
 
+def createCorrelationMatrix(dataset):
+    correlation = dataset.corr()
+    maskForTriangle = np.zeros_like(correlation, dtype=np.bool)
+    maskForTriangle[np.triu_indices_from(maskForTriangle)] = True
+    f, ax = plt.subplots(figsize=(11, 9))
+    colorMap = sns.diverging_palette(220, 10, as_cmap=True)
+    sns.heatmap(correlation, mask=maskForTriangle, cmap=colorMap, vmax=.3,
+                square=True, xticklabels=True, yticklabels=True,
+                linewidths=.5, cbar_kws={"shrink": .5}, ax=ax)
+    plt.title('Correlation Chart for Census Bureau Data')
+    savefig("CorrelationMatrix.png")
+
+
 '''  Retrieve and Fix data  '''
 data = pd.read_csv('Dataset.csv', header=None, index_col=None)
 data.columns = ['Age', 'Work', 'Edu-Lvl', 'Edu-Years', 'Marriage-Status', 'Occupation', 'Relationship', 'Gender',
@@ -53,10 +63,6 @@ data.columns = ['Age', 'Work', 'Edu-Lvl', 'Edu-Years', 'Marriage-Status', 'Occup
 X_columns = ['Age', 'Work', 'Edu-Lvl', 'Edu-Years', 'Marriage-Status', 'Occupation', 'Relationship', 'Gender',
              'Cap-Gain', 'Cap-Loss', 'Hours']
 Y_columns = ['Income']
-
-# Number of empty values
-# print(data.isnull().sum())
-# print(data.describe(include="all"))
 
 data.replace(["?", "? ", " ?", " ? "], np.nan, inplace=True)
 data.replace(" <=50K", 0, inplace=True)
@@ -71,7 +77,6 @@ data = data[pd.notnull(data['Occupation'])]
 
 ''' Certain Columns can be grouped into ranges for easier analysis 
     Grouping: Age, Edu-Years, Cap-Gain, Cap-Loss, Hours '''
-# Combine Age, Cap-Gain, Cap-Loss, Hours
 data.loc[data.Age <= 21, 'Age'] = 0
 data.loc[(data.Age > 21) & (data.Age <= 30), 'Age'] = 1
 data.loc[(data.Age > 30) & (data.Age <= 50), 'Age'] = 2
@@ -96,31 +101,18 @@ data.loc[(data.Hours > 40) & (data.Hours <= 60), 'Hours'] = 2
 data.loc[(data.Hours > 60) & (data.Hours <= 80), 'Hours'] = 3
 data.loc[data.Hours > 80, 'Hours'] = 4
 
-''' Analyze Data '''
+''' Data Output '''
+createCorrelationMatrix(data)
 print(data.head(10))
 # print(data.columns.values)
 # print("Data shape", data.shape)
 
-# #Info on numerical and categorical values
+# Numerical and categorical values
 # print(data.info())
 # print(data.describe(include=['O']))
 # print(data.describe())
 
-''' Look at percentage fo each category where Income >50K'''
-# print(data[['Work', 'Income']].groupby(['Work'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Edu-Lvl', 'Income']].groupby(['Edu-Lvl'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Marriage-Status', 'Income']].groupby(['Marriage-Status'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Occupation', 'Income']].groupby(['Occupation'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Relationship', 'Income']].groupby(['Relationship'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Gender', 'Income']].groupby(['Gender'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-
-# print(data[['Age', 'Income']].groupby(['Age'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Edu-Years', 'Income']].groupby(['Edu-Years'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Cap-Gain', 'Income']].groupby(['Cap-Gain'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Cap-Loss', 'Income']].groupby(['Cap-Loss'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-# print(data[['Hours', 'Income']].groupby(['Hours'], as_index=False).mean().sort_values(by='Income', ascending=False) )
-
-# Bar chart distributions
+# Plots of Distributions
 # bar_chart('Work')
 # bar_chart('Edu-Lvl')
 # bar_chart('Marriage-Status')
@@ -134,9 +126,6 @@ print(data.head(10))
 # bar_chart('Hours')
 
 ''' Convert Category Columns to numerical '''
-# See the categorical unique values
-# print(data.Work.unique(), '\n', data['Edu-Lvl'].unique(), '\n', data['Marriage-Status'].unique())
-# print(data.Occupation.unique(), '\n', data.Relationship.unique(), '\n', data.Gender.unique())
 
 data["Work"] = data["Work"].astype('category')
 data["Edu-Lvl"] = data["Edu-Lvl"].astype('category')
@@ -152,6 +141,10 @@ data["Occupation"] = data["Occupation"].cat.codes
 data["Relationship"] = data["Relationship"].cat.codes
 data["Gender"] = data["Gender"].cat.codes
 
+
+# See the categorical unique values
+# print(data.Work.unique(), '\n', data['Edu-Lvl'].unique(), '\n', data['Marriage-Status'].unique())
+# print(data.Occupation.unique(), '\n', data.Relationship.unique(), '\n', data.Gender.unique())
 
 # See the numerical categorical values
 # print(data.Work.unique(), '\n', data['Edu-Lvl'].unique(), '\n', data['Marriage-Status'].unique())
@@ -195,12 +188,12 @@ def main():
     tree.export_graphviz(dtModel, out_file='tree.dot', feature_names=X_columns)
     # check_call(['dot', '-Tpng', 'tree.dot', '-o', 'tree.png'])
 
-    ''' Multilayer perceptron '''
+    ''' Multilayer Perceptron '''
     scaler = StandardScaler()
     scaler.fit(X)
     X_scaler = scaler.transform(X)
-    # grid = {'hidden_layer_sizes': [125, 150], 'alpha': [0.01, 0.005], 'max_iter': [470, 480]}
-    # findBestMLPParams(grid, X_scaler, y)
+    # parameter_grid = {'activation': ["logistic", "relu"], 'hidden_layer_sizes': [125, 150], 'alpha': [0.01, 0.005], 'max_iter': [475, 480]}
+    # findBestMLPParams(parameter_grid, X_scaler, y)
     mlpModel = MLPClassifier(hidden_layer_sizes=150, alpha=0.01, max_iter=475)
     mlpModel.fit(X_scaler, y)
     mlpAccuracy = cross_val_score(mlpModel, X_scaler, y, cv=10)
