@@ -7,6 +7,6 @@ years of education, marital status, occupation, relationship , gender, capital g
 We used Naives Bayes, Decision Trees, and Multilayer Perception to answer this question. 
 
 Programmers: 
-Andy Nguyen 
-Rocio Salguero 
+Andy Nguyen, 
+Rocio Salguero,
 Annie Chen
